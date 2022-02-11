@@ -9,6 +9,8 @@ export interface BroadcastFlags {
   local?: boolean;
   broadcast?: boolean;
   binary?: boolean;
+  timeout?: number;
+  ack?: () => void;
 }
 
 export interface BroadcastOptions {
@@ -133,9 +135,15 @@ export class Adapter extends EventEmitter {
     };
 
     packet.nsp = this.nsp.name;
+    let ack = flags.ack, id, timeout;
+    if (ack) {
+      packet.id = id = this.nsp._ids++;
+      timeout = flags.timeout;
+    }
     const encodedPackets = this.encoder.encode(packet);
 
     this.apply(opts, socket => {
+      if (ack) socket.registerAckCallback(id, ack, timeout);
       socket.client.writeToEngine(encodedPackets, packetOpts);
     });
   }
